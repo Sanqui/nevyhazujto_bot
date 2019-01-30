@@ -73,7 +73,7 @@ class Vsezaodvoz(Site):
 *{0.title}*
 {0.description}
 _{0.location}_
-https://vsezaodvoz.cz/{0.url}
+https://vsezaodvoz.cz{0.url}
 """.format(item).strip()
 
 
@@ -85,6 +85,9 @@ def telegram_post(method, **params):
             print("Failed to post to Telegram: {}: {}".format(type(ex), ex))
             time.sleep(1)
 
+def discord_post(**params):
+    return requests.post(config.DISCORD_WEBHOOK_URL, data=params)
+
 sites = [Nevyhazujto(), Vsezaodvoz()]
 
 for site in sites:
@@ -93,9 +96,15 @@ for site in sites:
  
 while True:
     for site in sites:
-        for item in site.get_new_items():
+        try:
+            items = site.get_new_items()
+        except Exception as ex:
+            print("Failed to get new items", str(ex))
+            continue
+        for item in items:
             print(site.format_item(item))
             telegram_post("sendMessage", text=site.format_item(item),
                 chat_id=config.TELEGRAM_CHAT_ID, parse_mode="Markdown", disable_web_page_preview=True)
+            discord_post(content=site.format_item(item))
         print("Checked {}".format(type(site).__name__))
     time.sleep(30)
